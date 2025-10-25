@@ -15,8 +15,8 @@ pub struct RpcResponse {
 pub struct Track {
     pub title: String,
     pub artist: String,
-    pub album_name: String,
-    pub album_cover_url: String,
+    pub desc: String,
+    pub artwork_url: String,
     pub share_url: String,
     pub duration: u64,
 }
@@ -64,20 +64,23 @@ pub async fn set_track_activity(
 
         let activity = activity::Activity::new()
             .details(&track.title)
-            .state(&track.album_name)
+            .details_url(&track.share_url)
+            .state(&track.artist)
+            .state_url(&track.share_url)
+            .buttons(vec![
+                activity::Button::new("Слушать в SoundCloud", &track.share_url),
+            ])
             .assets(
                 activity::Assets::new()
-                    .large_image(&track.album_cover_url)
-                    .large_text(&track.album_name),
+                    .large_image(&track.artwork_url)
+                    .small_text("im cat")
             )
+             
             .timestamps(
                 activity::Timestamps::new()
                     .start(start_time)
                     .end(end_time),
             )
-            .buttons(vec![
-                activity::Button::new("Слушать в SoundCloud", &track.share_url),
-            ])
             .activity_type(activity::ActivityType::Listening);
 
         client.set_activity(activity)
