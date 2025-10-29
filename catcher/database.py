@@ -1,12 +1,9 @@
-# database.py
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from models import Base  # Импортируем Base
 
-# URL для асинхронного подключения к SQLite
 DATABASE_URL = "sqlite+aiosqlite:///./tracks_orm.db"
 
-# Создаем асинхронный движок
 async_engine = create_async_engine(
     DATABASE_URL,
     echo=False,  # echo=True для логирования SQL-запросов
@@ -17,6 +14,9 @@ async_engine = create_async_engine(
 async def init_db():
     """Асинхронно создает таблицы в базе данных."""
     async with async_engine.begin() as conn:
+        from models import TrackDB, User, Likes  # pyright: ignore[reportUnusedImport]
+
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
 
