@@ -1,11 +1,8 @@
 from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
-
 
 class GetTrack(BaseModel):
     social: str | None = "soundcloud"
     url: str | None = None
-
 
 class Track(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -40,6 +37,7 @@ class UserBase(BaseModel):
 
     id: int
     username: str
+    password: str
     avatar_url: str | None = None
 
 
@@ -50,13 +48,11 @@ class AddUser(BaseModel):
 
 
 class AddTrack(BaseModel):
-    """Schema for creating a new track."""
-
     title: str
     artist: str | None = None
     duration: int | None = None
-    stream_url: str = "https://example.com/stream.mp3"
-    source_url: str = "https://example.com/source"
+    stream_url: str
+    source_url: str
     artwork_url: str | None = None
     description: str | None = None
 

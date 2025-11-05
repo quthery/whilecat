@@ -15,7 +15,6 @@ def test_docs_available(client: TestClient):
     assert response.status_code == 200
 
 
-# ============= USER ROUTES TESTS =============
 
 
 def test_create_user(client: TestClient, sample_user_data):
@@ -107,6 +106,7 @@ def test_update_user(client: TestClient, sample_user_data):
     update_data = {
         "id": user_id,
         "username": sample_user_data["username"],
+        "password": sample_user_data["password"],
         "avatar_url": "https://example.com/new-avatar.jpg",
     }
     response = client.put(f"/users/{user_id}", json=update_data)
@@ -118,6 +118,7 @@ def test_update_user_not_found(client: TestClient, sample_user_data):
     """Test updating non-existent user returns 404."""
     update_data = {
         "id": 99999,
+        "password": "newpassword",
         "username": "nonexistent",
     }
     response = client.put("/users/99999", json=update_data)
@@ -186,8 +187,6 @@ def test_catch_track_missing_url(client: TestClient):
 #     assert response.status_code in [400, 500]
 
 
-# ============= INTEGRATION TESTS =============
-
 
 def test_user_lifecycle(client: TestClient, sample_user_data):
     """Test complete user lifecycle: create, read, update, delete."""
@@ -204,6 +203,7 @@ def test_user_lifecycle(client: TestClient, sample_user_data):
     update_data = {
         "id": user_id,
         "username": sample_user_data["username"],
+        "password": sample_user_data["password"],
         "avatar_url": "https://example.com/updated.jpg",
     }
     update_response = client.put(f"/users/{user_id}", json=update_data)

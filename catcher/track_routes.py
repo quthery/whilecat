@@ -48,10 +48,6 @@ def get_track_data(track_url: str) -> Track:
 
 @router.post("/catch", response_model=Track)
 async def catch_track(track: GetTrack, session: AsyncSession = Depends(get_session)):
-    """Catch and store track information from URL."""
-    if not track.url:
-        raise HTTPException(status_code=400, detail="URL is required")
-
     track_from_db = await TrackRepository.get_track_by_source_url(session, track.url)
 
     if track_from_db is None:
@@ -59,17 +55,11 @@ async def catch_track(track: GetTrack, session: AsyncSession = Depends(get_sessi
         return await TrackRepository.add_track(session, track_new)
 
     async with aiohttp.ClientSession() as client:
-        async with client.get(track.url) as response:
+        async with client.get(track_from_db.source_url) as response:
             if response.status != 200:
-                track_updated = get_track_data(track.url)
-                track_from_db.stream_url = track_updated.stream_url
+                updated_track = get_track_data(track.url)
+                track_from_db.stream_url = updated_track.stream_url
                 return await TrackRepository.update_track_by_source_url(
                     session, track.url, track_from_db
                 )
             return track_from_db
-
-
-@router.post("/", response_model=Track)
-async def create_track(track: AddTrack, session: AsyncSession = Depends(get_session)):
-    """Create a new track manually (for testing)."""
-    return await TrackRepository.add_track_simple(session, track)

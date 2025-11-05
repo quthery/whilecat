@@ -138,7 +138,6 @@ class UserRepository:
 
     @staticmethod
     async def get_user_liked_tracks(db: AsyncSession, user_id: int) -> list[TrackBase]:
-        """Get all tracks liked by user."""
         query = (
             select(TrackDB)
             .join(Likes, Likes.track_id == TrackDB.id)
