@@ -2,14 +2,21 @@ package main
 
 import (
 	"app/internal/ui"
+	"fmt"
+	"os"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
-	app := ui.NewApp()
+	p := tea.NewProgram(
+		ui.NewModel(),
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+	)
 
-	if err := app.App.SetRoot(app.MainFlex, true).Run(); err != nil {
-		panic(err)
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Error running program: %v\n", err)
+		os.Exit(1)
 	}
-	// TODO: Исправить ошибки и передалать setupGlobalKeys что бы у был список кнопок или чего нибудь другого между чем нужно менять фокус
-	// TODO: Немного переделать архитектуру и возможно добавить тестов
 }

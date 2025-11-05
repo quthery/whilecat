@@ -4,118 +4,181 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
+	"github.com/charmbracelet/lipgloss"
 )
 
-func (ui *UI) PlayerPanel() tview.Primitive {
-	percent := 50
-	isPlaying := true
+func (m Model) renderPlayer(height int) string {
+	var sections []string
 
-	progressBarText := createProgressBar(percent, 40)
-	progressBar := tview.NewTextView().
-		SetText(fmt.Sprintf("  %s %d%%", progressBarText, percent)).
-		SetTextAlign(tview.AlignCenter).
-		SetDynamicColors(true)
+	playerWidth := ((m.width * 2) / 3) - 6
+	if playerWidth < 40 {
+		playerWidth = 40
+	}
 
-	playPauseBtn := tview.NewButton("⏸ Pause")
-	playPauseBtn.SetSelectedFunc(func() {
-		isPlaying = !isPlaying
-		if isPlaying {
-			playPauseBtn.SetLabel("⏸ Pause")
+	title := titleStyle.Render("₍^. .^₎Ⳋ whilecat")
+	sections = append(sections, title)
+	sections = append(sections, "")
+
+	if len(m.tracks) > 0 && m.currentTrack < len(m.tracks) {
+		currentTrack := m.tracks[m.currentTrack]
+
+		var musicIcon string
+		if m.isPlaying {
+			icons := []string{"♪", "♫", "♬", "♪"}
+			musicIcon = icons[(m.progress/10)%len(icons)]
 		} else {
-			playPauseBtn.SetLabel("▶ Play")
+			musicIcon = "♪"
 		}
-	})
 
-	stopBtn := tview.NewButton("⏹ Stop")
-	stopBtn.SetSelectedFunc(func() {
-		isPlaying = false
-		playPauseBtn.SetLabel("▶ Play")
-	})
+		nowPlaying := lipgloss.NewStyle().
+			Foreground(successColor).
+			Bold(true).
+			Render(fmt.Sprintf("%s Now Playing:", musicIcon))
 
-	prevBtn := tview.NewButton("⏮ Prev")
-	prevBtn.SetSelectedFunc(func() {
-	})
+		trackInfoText := fmt.Sprintf("  %s - %s", currentTrack.Title, currentTrack.Artist)
+		if len(trackInfoText) > playerWidth-10 {
+			trackInfoText = trackInfoText[:playerWidth-13] + "..."
+		}
 
-	nextBtn := tview.NewButton("⏭ Next")
-	nextBtn.SetSelectedFunc(func() {
-	})
+		trackInfo := lipgloss.NewStyle().
+			Foreground(textColor).
+			Bold(true).
+			Render(trackInfoText)
 
-	controlsRow := tview.NewFlex().SetDirection(tview.FlexColumn)
-	controlsRow.AddItem(tview.NewBox(), 0, 1, false)
-	controlsRow.AddItem(prevBtn, 10, 0, false)
-	controlsRow.AddItem(tview.NewBox(), 1, 0, false)
-	controlsRow.AddItem(playPauseBtn, 12, 0, false)
-	controlsRow.AddItem(tview.NewBox(), 1, 0, false)
-	controlsRow.AddItem(stopBtn, 10, 0, false)
-	controlsRow.AddItem(tview.NewBox(), 1, 0, false)
-	controlsRow.AddItem(nextBtn, 10, 0, false)
-	controlsRow.AddItem(tview.NewBox(), 0, 1, false)
+		trackDuration := lipgloss.NewStyle().
+			Foreground(dimColor).
+			Render(fmt.Sprintf("  Duration: %s", currentTrack.Duration))
 
-	inputField := tview.NewInputField()
-	inputField.SetFieldWidth(40)
-	inputField.SetPlaceholder("Enter track URL or path...")
-	inputField.SetLabel(" 🎵 Track: ")
+		sections = append(sections, nowPlaying)
+		sections = append(sections, trackInfo)
+		sections = append(sections, trackDuration)
+		sections = append(sections, "")
+	}
 
-	inputField.SetBorder(true)
-	inputField.SetFieldTextColor(tcell.Color100)
+	inputLabel := lipgloss.NewStyle().
+		Foreground(accentColor).
+		Bold(true).
+		Render("🎵 Add Track:")
 
-	addBtn := tview.NewButton("[+]")
-	addBtn.SetSelectedFunc(func() {
-	})
+	m.textInput.Width = playerWidth - 10
+	if m.textInput.Width < 20 {
+		m.textInput.Width = 20
+	}
 
-	inputRow := tview.NewFlex().SetDirection(tview.FlexColumn)
-	inputRow.AddItem(tview.NewBox(), 1, 0, false)
-	inputRow.AddItem(inputField, 0, 1, false)
-	inputRow.AddItem(addBtn, 5, 0, false)
-	inputRow.AddItem(tview.NewBox(), 1, 0, false)
+	var inputBox string
+	if m.focusState == FocusInput {
+		inputBox = focusedBorderStyle.Copy().
+			Width(playerWidth-4).
+			Padding(0, 1).
+			Render(m.textInput.View())
+	} else {
+		inputBox = normalBorderStyle.Copy().
+			Width(playerWidth-4).
+			Padding(0, 1).
+			Render(m.textInput.View())
+	}
 
-	// Register focusable elements
-	ui.Focus.Register(inputField)
+	sections = append(sections, inputLabel)
+	sections = append(sections, inputBox)
+	sections = append(sections, "")
 
-	playerPanel := tview.NewFlex().SetDirection(tview.FlexRow)
-	playerPanel.AddItem(tview.NewBox(), 1, 0, false) // Top padding
-	playerPanel.AddItem(inputRow, 3, 0, false)
-	playerPanel.AddItem(tview.NewBox(), 1, 0, false) // Spacer
-	playerPanel.AddItem(progressBar, 1, 0, false)
-	playerPanel.AddItem(tview.NewBox(), 0, 1, false) // Spacer
-	playerPanel.AddItem(controlsRow, 3, 0, false)
-	playerPanel.AddItem(tview.NewBox(), 1, 0, false) // Bottom padding
+	progressBar := m.renderProgressBar(playerWidth - 10)
+	sections = append(sections, progressBar)
+	sections = append(sections, "")
 
-	playerPanel.SetBorder(true).
-		SetTitle(" 🎧 Music Player ").
-		SetBorderColor(tcell.ColorBlue)
+	controls := m.renderControls()
+	sections = append(sections, controls)
 
-	ui.setupGlobalKeys()
+	content := lipgloss.JoinVertical(lipgloss.Left, sections...)
 
-	return playerPanel
+	var style lipgloss.Style
+	if m.focusState == FocusInput || m.focusState == FocusControls {
+		style = focusedBorderStyle.Copy().Width(playerWidth).Height(height - 2)
+	} else {
+		style = normalBorderStyle.Copy().Width(playerWidth).Height(height - 2)
+	}
+
+	return style.Render(content)
 }
 
-func (ui *UI) setupGlobalKeys() {
-	ui.App.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		switch event.Key() {
-		case tcell.KeyTab:
-			ui.Focus.Next()
-			return nil
+func (m Model) renderProgressBar(width int) string {
+	if width < 10 {
+		width = 10
+	}
 
-		case tcell.KeyBacktab:
-			ui.Focus.Previous()
-			return nil
-
-		case tcell.KeyCtrlP:
-			return nil
-		}
-		return event
-	})
-}
-
-func createProgressBar(percent int, width int) string {
-	filled := (percent * width) / 100
+	filled := (m.progress * width) / 100
 	if filled > width {
 		filled = width
 	}
 	empty := width - filled
 
-	return "[" + strings.Repeat("█", filled) + strings.Repeat("░", empty) + "]"
+	// Create gradient effect for filled portion with different characters
+	var filledBar string
+	for i := 0; i < filled; i++ {
+		if i == filled-1 && m.isPlaying {
+			filledBar += "▶"
+		} else {
+			filledBar += "█"
+		}
+	}
+	emptyBar := strings.Repeat("░", empty)
+
+	filledStyle := lipgloss.NewStyle().Foreground(successColor).Bold(true)
+	emptyStyle := lipgloss.NewStyle().Foreground(dimColor)
+
+	bar := filledStyle.Render(filledBar) + emptyStyle.Render(emptyBar)
+
+	percentage := lipgloss.NewStyle().
+		Foreground(textColor).
+		Bold(true).
+		Render(fmt.Sprintf(" %3d%%", m.progress))
+
+	progressLabel := lipgloss.NewStyle().
+		Foreground(accentColor).
+		Bold(true).
+		Render("Progress: ")
+
+	return progressLabel + "[" + bar + "]" + percentage
+}
+
+// renderControls renders the playback control buttons
+func (m Model) renderControls() string {
+	var prevBtn, playPauseBtn, stopBtn, nextBtn string
+
+	if m.focusState == FocusControls {
+		prevBtn = activeButtonStyle.Render("⏮ Prev")
+		stopBtn = activeButtonStyle.Render("⏹ Stop")
+		nextBtn = activeButtonStyle.Render("⏭ Next")
+
+		if m.isPlaying {
+			playPauseBtn = activeButtonStyle.Render("⏸ Pause")
+		} else {
+			playPauseBtn = activeButtonStyle.Render("▶ Play")
+		}
+	} else {
+		prevBtn = buttonStyle.Render("⏮ Prev")
+		stopBtn = buttonStyle.Render("⏹ Stop")
+		nextBtn = buttonStyle.Render("⏭ Next")
+
+		if m.isPlaying {
+			playPauseBtn = buttonStyle.Render("⏸ Pause")
+		} else {
+			playPauseBtn = buttonStyle.Render("▶ Play")
+		}
+	}
+
+	controls := lipgloss.JoinHorizontal(
+		lipgloss.Center,
+		prevBtn,
+		"  ",
+		playPauseBtn,
+		"  ",
+		stopBtn,
+		"  ",
+		nextBtn,
+	)
+
+	return lipgloss.NewStyle().
+		Padding(1, 0).
+		Render(controls)
 }

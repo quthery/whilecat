@@ -1,51 +1,100 @@
 package ui
 
 import (
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
+	"fmt"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
-func (ui *UI) TrackListPanel() *tview.List {
-	trackList := tview.NewList().
-		ShowSecondaryText(true)
+func (m Model) renderTrackList(height int) string {
+	var tracks []string
 
-	trackList.AddItem("🎵 Track 1 - Artist Name", "3:45", '1', nil)
-	trackList.AddItem("🎵 Track 2 - Another Artist", "4:20", '2', nil)
-	trackList.AddItem("🎵 Track 3 - Cool Song", "2:58", '3', nil)
-	trackList.AddItem("🎵 Track 4 - Epic Music", "5:12", '4', nil)
-	trackList.AddItem("🎵 Track 5 - Best Hit", "3:33", '5', nil)
+	title := titleStyle.Render("📋 Track List")
+	tracks = append(tracks, title)
+	tracks = append(tracks, "")
 
-	trackList.SetMainTextColor(tcell.ColorWhite).
-		SetSecondaryTextColor(tcell.ColorGray).
-		SetSelectedTextColor(tcell.ColorBlack).
-		SetSelectedBackgroundColor(tcell.ColorWhite)
+	trackListWidth := (m.width / 3) - 4
+	if trackListWidth < 30 {
+		trackListWidth = 30
+	}
 
-	trackList.SetBorder(true).SetTitle("📋 Список треков")
+	contentWidth := trackListWidth - 4
 
-	trackList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyRune {
-			current := trackList.GetCurrentItem()
-			count := trackList.GetItemCount()
+	if len(m.tracks) == 0 {
+		emptyMsg := dimItemStyle.Render("No tracks...")
+		tracks = append(tracks, emptyMsg)
+	} else {
+		maxTracks := height - 6
+		if maxTracks < 1 {
+			maxTracks = 1
+		}
 
-			switch event.Rune() {
-			case 'j', 'J':
-				if current < count-1 {
-					trackList.SetCurrentItem(current + 1)
-				} else if current == count-1 {
-					trackList.SetCurrentItem(0)
+		startIdx := 0
+		endIdx := len(m.tracks)
+
+		if len(m.tracks) > maxTracks {
+			startIdx = m.selectedIdx - maxTracks/2
+			if startIdx < 0 {
+				startIdx = 0
+			}
+			endIdx = startIdx + maxTracks
+			if endIdx > len(m.tracks) {
+				endIdx = len(m.tracks)
+				startIdx = endIdx - maxTracks
+				if startIdx < 0 {
+					startIdx = 0
 				}
-				return nil
-			case 'k', 'K':
-				if current > 0 {
-					trackList.SetCurrentItem(current - 1)
-				} else if current == 0 {
-					trackList.SetCurrentItem(count - 1)
-				}
-				return nil
 			}
 		}
-		return event
-	})
 
-	return trackList
+		for i := startIdx; i < endIdx; i++ {
+			track := m.tracks[i]
+			var line string
+			icon := "♫"
+
+			if i == m.currentTrack && m.isPlaying {
+				icon = " "
+			} else if i == m.currentTrack {
+				icon = " "
+			}
+
+			// Truncate text to fit width
+			trackText := fmt.Sprintf("%s %s - %s", icon, track.Title, track.Artist)
+			if len(trackText) > contentWidth-8 {
+				trackText = trackText[:contentWidth-11] + "..."
+			}
+
+			durationText := track.Duration
+			lineText := fmt.Sprintf("%-*s %s", contentWidth-8, trackText, durationText)
+
+			if i == m.selectedIdx && m.focusState == FocusTrackList {
+				line = selectedItemStyle.Render(lineText)
+			} else if i == m.currentTrack {
+				style := normalItemStyle.Copy().Foreground(successColor).Bold(true)
+				line = style.Render(lineText)
+			} else {
+				line = normalItemStyle.Render(lineText)
+			}
+
+			tracks = append(tracks, line)
+		}
+
+		// Show scroll indicator if needed
+		if len(m.tracks) > maxTracks {
+			scrollInfo := dimItemStyle.Render(fmt.Sprintf("(%d/%d)", m.selectedIdx+1, len(m.tracks)))
+			tracks = append(tracks, "")
+			tracks = append(tracks, scrollInfo)
+		}
+	}
+
+	content := lipgloss.JoinVertical(lipgloss.Left, tracks...)
+
+	var style lipgloss.Style
+	if m.focusState == FocusTrackList {
+		style = focusedBorderStyle.Copy().Width(trackListWidth).Height(height - 2)
+	} else {
+		style = normalBorderStyle.Copy().Width(trackListWidth).Height(height - 2)
+	}
+
+	return style.Render(content)
 }
