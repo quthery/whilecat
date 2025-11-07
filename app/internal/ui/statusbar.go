@@ -50,11 +50,6 @@ func (m Model) renderStatusBar() string {
 func (m Model) renderHelp() string {
 	var help []string
 
-	helpIcon := lipgloss.NewStyle().
-		Foreground(accentColor).
-		Bold(true).
-		Render("💡 ")
-
 	switch m.focusState {
 	case FocusTrackList:
 		help = append(help, "j/k or ↑/↓: navigate • enter/space: play • d: delete • tab: next • q: quit")
@@ -73,5 +68,5 @@ func (m Model) renderHelp() string {
 		}
 	}
 
-	return helpIcon + helpStyle.Render(helpText)
+	return helpStyle.Render(helpText)
 }

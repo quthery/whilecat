@@ -9,7 +9,7 @@ import (
 func (m Model) renderTrackList(height int) string {
 	var tracks []string
 
-	title := titleStyle.Render("📋 Track List")
+	title := titleStyle.Render("(xvii type shit)")
 	tracks = append(tracks, title)
 	tracks = append(tracks, "")
 
