@@ -2,5 +2,6 @@
 *.pyc
 .pytest_cache
 .idea
+tracks_orm.db
 .vscode
 __pycache__
